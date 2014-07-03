@@ -9,6 +9,7 @@
 package csvutil
 
 import (
+	"encoding"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -26,6 +27,8 @@ type CsvHeader map[string]int
 
 // CSV headers cache.
 var hCache map[string]CsvHeader
+
+var textUnmarshalerType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
 
 // Provides primitives to read CSV file and set values on structures.
 type Reader struct {
@@ -160,9 +163,36 @@ func (r *Reader) SetData(v interface{}) error {
 	}
 
 	value := reflect.ValueOf(v).Elem()
+
 	for _, sf := range structFields {
 		strValue = r.colByName(sf.name)
+
+		// a little nasty, but if a field implements encoding.TextUnmarshaler, use its UnmarshalText method.
+		if reflect.PtrTo(sf.typ).Implements(textUnmarshalerType) {
+			// TODO: This all could probably be done better.
+
+			if !sf.val.CanAddr() {
+				return fmt.Errorf("the field '%s' implements encoding.TextUnmarshaler but it is unaddressable.", sf.name)
+			}
+
+			ut, _ := sf.val.Addr().Interface().(encoding.TextUnmarshaler)
+			err = ut.UnmarshalText([]byte(strValue))
+
+			if !reflect.ValueOf(v).Elem().FieldByName(sf.name).CanSet() {
+				return fmt.Errorf("unable to set field '%s'.", sf.name)
+			}
+
+			reflect.ValueOf(v).Elem().FieldByName(sf.name).Set(reflect.ValueOf(ut).Elem())
+
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
 		err = r.setValue(value, sf, strValue)
+
 		if err != nil {
 			return err
 		}
@@ -226,6 +256,7 @@ func ToCsv(v interface{}, delim, boolTrue, boolFalse string) string {
 type sField struct {
 	name string
 	typ  reflect.Type
+	val  reflect.Value
 }
 
 // getFields returns array of sField for the passed struct.
@@ -258,7 +289,7 @@ func getFields(v interface{}) ([]*sField, string) {
 	for i := 0; i < t.NumField(); i++ {
 		structField = t.Field(i)
 		if !structField.Anonymous && !skip(structField.Tag) && reflect.ValueOf(v).Elem().Field(i).CanSet() {
-			f := &sField{name: structField.Name, typ: structField.Type}
+			f := &sField{name: structField.Name, typ: structField.Type, val: reflect.ValueOf(v).Elem().Field(i)}
 			structFields = append(structFields, f)
 		}
 	}
