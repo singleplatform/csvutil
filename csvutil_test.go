@@ -170,6 +170,36 @@ func Test_SetData(t *testing.T) {
 	assert.Equal(t, false, p.LowBalance)
 }
 
+type personToFail struct {
+	Name       string
+	Age        int
+	Balance    float32
+	Skipped    string `csv:"-"`
+	LowBalance bool
+	Born       string
+}
+
+func Test_SetDataNoPanic(t *testing.T) {
+	// this test ensures no panic is thrown when
+	// the struct, personToFail, has more fields
+	// than available in the csv record.
+	//
+	sr := NewStringReadCloser(strings.Join(testCsvLines, "\n"))
+	c := NewCsvUtil(sr).Comma('|').
+		TrailingComma(true).
+		FieldsPerRecord(-1).
+		CustomBool([]string{"Y"}, []string{"N"})
+	p := &personToFail{Skipped: "aaa"}
+
+	err := c.SetData(p)
+	assert.NotError(t, err)
+	assert.Equal(t, "Tony", p.Name)
+	assert.Equal(t, 23, p.Age)
+	assert.Equal(t, float32(123.456), p.Balance)
+	assert.Equal(t, "aaa", p.Skipped)
+	assert.Equal(t, true, p.LowBalance)
+}
+
 func Test_Comma(t *testing.T) {
 	csvu := NewCsvUtil(nil)
 	assert.Equal(t, ',', csvu.csvr.Comma)

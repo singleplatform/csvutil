@@ -208,11 +208,17 @@ func (r *Reader) LastCsvLine() string {
 
 // colByName returns CSV column value by name.
 func (r *Reader) colByName(colName string) string {
-	value := r.csvLine[r.header[colName]]
-	if r.trim != "" {
-		value = strings.Trim(value, r.trim)
+
+	if h, hok := r.header[colName]; hok {
+		if h+1 <= len(r.csvLine) {
+			if r.trim != "" {
+				return strings.Trim(r.csvLine[h], r.trim)
+			}
+			return r.csvLine[h]
+		}
 	}
-	return value
+
+	return ""
 }
 
 // ToCsv takes a struct and returns CSV line with data delimited by delim and
