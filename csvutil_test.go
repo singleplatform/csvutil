@@ -191,13 +191,12 @@ func Test_SetDataNoPanic(t *testing.T) {
 		CustomBool([]string{"Y"}, []string{"N"})
 	p := &personToFail{Skipped: "aaa"}
 
-	err := c.SetData(p)
-	assert.NotError(t, err)
-	assert.Equal(t, "Tony", p.Name)
-	assert.Equal(t, 23, p.Age)
-	assert.Equal(t, float32(123.456), p.Balance)
-	assert.Equal(t, "aaa", p.Skipped)
-	assert.Equal(t, true, p.LowBalance)
+	// this should panic
+	fn := func() {
+		c.SetData(p)
+	}
+
+	assert.Panic(t, fn, "Expected panic when struct has more exported fields than CSV has")
 }
 
 func Test_Comma(t *testing.T) {

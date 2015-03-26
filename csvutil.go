@@ -217,8 +217,7 @@ func (r *Reader) colByName(colName string) string {
 			return r.csvLine[h]
 		}
 	}
-
-	return ""
+	panic("Struct Field named '" + colName + "' did not exist in CSV")
 }
 
 // ToCsv takes a struct and returns CSV line with data delimited by delim and
