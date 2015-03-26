@@ -216,6 +216,7 @@ func (r *Reader) colByName(colName string) string {
 			}
 			return r.csvLine[h]
 		}
+		panic("Struct has more Fields than represented in CSV")
 	}
 	panic("Struct Field named '" + colName + "' did not exist in CSV")
 }
